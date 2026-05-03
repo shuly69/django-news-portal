@@ -27,11 +27,11 @@ services:
   db:
     image: postgres:15
     environment:
-      - POSTGRES_DB=news_96d8
-      - POSTGRES_USER=news_96d8_user
-      - POSTGRES_PASSWORD=NSJqZ4zldDMgSQgsGl9wVtY3THOnChD8
+      - POSTGRES_DB=news_db_aial
+      - POSTGRES_USER=news_db_aial_user
+      - POSTGRES_PASSWORD=xbScRgQZTGfAmlbGbE7EzRpKGXTEQAKl
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U news_96d8_user -d news_96d8"]
+      test: ["CMD-SHELL", "pg_isready -U news_db_aial_user -d news_db_aial"]
       interval: 10s
       timeout: 5s
       retries: 5
