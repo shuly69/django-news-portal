@@ -1,37 +1,79 @@
+# Docker Compose for local development.
+#
+# Services:
+#   web   – Django + Gunicorn application server
+#   db    – PostgreSQL 15
+#   redis – Redis 7 cache layer (used by django-redis)
+#   nginx – Reverse proxy; serves static files, forwards app traffic
+#
+# Usage:
+#   cp .env.example .env   # fill in your secrets
+#   docker compose up --build
 
 services:
+
   web:
     build:
       context: .
       dockerfile: Dockerfile
-    environment:
-      - DJANGO_SUPERUSER_USERNAME=admin
-      - DJANGO_SUPERUSER_EMAIL=admin@example.com
-      - DJANGO_SUPERUSER_PASSWORD=2323
     command: >
-      sh -c "python manage.py migrate &&
-         python manage.py createsuperuser --noinput || true &&
-         gunicorn newsproject.wsgi:application --config gunicorn_config.py"
-
-
-    ports:
-      - "10000:10000"
+      sh -c "python manage.py migrate --noinput &&
+             python manage.py collectstatic --noinput &&
+             gunicorn newsproject.wsgi:application --config gunicorn_config.py"
     volumes:
       - .:/app
+    expose:
+      - "8000"
     env_file:
       - .env
-    
+    environment:
+      - DJANGO_SETTINGS_MODULE=newsproject.settings.development
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: on-failure
 
   db:
-    image: postgres:15
+    image: postgres:15-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    env_file:
+      - .env
     environment:
-      - POSTGRES_DB=news_db_aial
-      - POSTGRES_USER=news_db_aial_user
-      - POSTGRES_PASSWORD=xbScRgQZTGfAmlbGbE7EzRpKGXTEQAKl
+      # These names must match DB_NAME / DB_USER / DB_PASSWORD in .env
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U news_db_aial_user -d news_db_aial"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 10s
       timeout: 5s
       retries: 5
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  nginx:
+    image: nginx:1.25-alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      # Serve Django's collected static files directly from Nginx.
+      - static_volume:/app/staticfiles:ro
+    depends_on:
+      - web
+
+volumes:
+  postgres_data:
+  redis_data:
+  static_volume:
