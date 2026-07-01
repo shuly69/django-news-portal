@@ -1,8 +1,11 @@
 """Gunicorn configuration file."""
 import multiprocessing
+import os
 
 # Server socket
-bind = "0.0.0.0:10000"
+# Render (and most PaaS hosts) inject the port to listen on via $PORT.
+# Bind to it dynamically; fall back to 10000 for local Docker runs.
+bind = f"0.0.0.0:{os.environ.get('PORT', '10000')}"
 backlog = 2048
 
 # Worker processes

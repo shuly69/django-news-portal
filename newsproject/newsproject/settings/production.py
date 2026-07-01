@@ -21,6 +21,15 @@ ALLOWED_HOSTS = env.list(
     default=["newsproject-m07i.onrender.com"],
 )
 
+# Render terminates TLS at its edge proxy and forwards plain HTTP internally.
+# This header lets Django recognise the original request as secure — without it
+# SECURE_SSL_REDIRECT would bounce every request into an infinite redirect loop.
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+# Django 4+ requires the (scheme-qualified) origin to be trusted for any POST
+# (admin login, article forms). Derive it from ALLOWED_HOSTS.
+CSRF_TRUSTED_ORIGINS = [f"https://{host}" for host in ALLOWED_HOSTS if host != "*"]
+
 # Force HTTPS.
 SECURE_SSL_REDIRECT = True
 SECURE_HSTS_SECONDS = 31_536_000  # 1 year

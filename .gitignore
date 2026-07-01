@@ -1,2 +1,19 @@
-venv
-.env"staticfiles/" 
+# Virtual environment
+venv/
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+!.env.sample
+
+# Collected static files (regenerated on deploy)
+staticfiles/
+
+# Django
+*.log
+db.sqlite3

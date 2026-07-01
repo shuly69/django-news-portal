@@ -80,31 +80,47 @@ WSGI_APPLICATION = "newsproject.wsgi.application"
 # ---------------------------------------------------------------------------
 # Database – configured via env vars
 # ---------------------------------------------------------------------------
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": env("DB_NAME"),
-        "USER": env("DB_USER"),
-        "PASSWORD": env("DB_PASSWORD"),
-        "HOST": env("DB_HOST", default="db"),
-        "PORT": env("DB_PORT", default="5432"),
+# Render exposes managed Postgres as a single DATABASE_URL connection string.
+# Prefer it when present; otherwise fall back to the discrete DB_* vars used
+# by docker-compose locally.
+if env("DATABASE_URL", default=""):
+    DATABASES = {"default": env.db("DATABASE_URL")}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": env("DB_NAME"),
+            "USER": env("DB_USER"),
+            "PASSWORD": env("DB_PASSWORD"),
+            "HOST": env("DB_HOST", default="db"),
+            "PORT": env("DB_PORT", default="5432"),
+        }
     }
-}
 
 # ---------------------------------------------------------------------------
-# Cache – Redis via django-redis
+# Cache – Redis via django-redis, with an in-memory fallback
 # ---------------------------------------------------------------------------
-CACHES = {
-    "default": {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": env("REDIS_URL", default="redis://redis:6379/0"),
-        "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient",
-            # Silently return None on cache misses instead of raising exceptions.
-            "IGNORE_EXCEPTIONS": True,
-        },
+# On a single Render web service there is no Redis, so fall back to LocMemCache
+# when REDIS_URL is unset. django-redis stays the backend locally (docker-compose).
+REDIS_URL = env("REDIS_URL", default="")
+if REDIS_URL:
+    CACHES = {
+        "default": {
+            "BACKEND": "django_redis.cache.RedisCache",
+            "LOCATION": REDIS_URL,
+            "OPTIONS": {
+                "CLIENT_CLASS": "django_redis.client.DefaultClient",
+                # Silently return None on cache misses instead of raising exceptions.
+                "IGNORE_EXCEPTIONS": True,
+            },
+        }
     }
-}
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        }
+    }
 
 # ---------------------------------------------------------------------------
 # Auth

@@ -27,6 +27,9 @@ COPY --from=builder /install /usr/local
 # Copy application code.
 COPY . .
 
+# Make the release script executable (migrate + collectstatic + superuser).
+RUN chmod +x build.sh
+
 # Prevent Python from writing .pyc files and enable stdout/stderr flushing
 # so logs appear immediately in Docker.
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -35,4 +38,6 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 EXPOSE 8000
 
+# build.sh runs the release steps, then exec's this CMD (gunicorn).
+ENTRYPOINT ["./build.sh"]
 CMD ["gunicorn", "newsproject.wsgi:application", "--config", "gunicorn_config.py"]
